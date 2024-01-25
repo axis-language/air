@@ -1,2 +1,2 @@
 # air
-A low-level language that (will eventually) compile to many targets.
+AIR (Axis Intermediate Representation) is a low-level language that (will eventually) compile to many targets.
