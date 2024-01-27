@@ -1,0 +1,8 @@
+[package]
+name = "air"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Utility
+fehler = "1.0.0"
