@@ -6,6 +6,7 @@ pub mod lir;
 
 /* Import */
 use std::collections::HashMap;
+use std::io::Write;
 use arch::Architecture;
 use lir::{
     Project,
@@ -37,5 +38,6 @@ fn main() {
         &arch::LowerToAssemblyFileContext {},
     ).expect("Failed to generate assembly file!");
 
-    println!("{}", assembly_file_string);
+    let mut assembly_file = std::fs::File::create("target/project.asm").expect("Failed to create assembly file!");
+    assembly_file.write(assembly_file_string.as_bytes()).expect("Failed to write to assembly file!");
 }

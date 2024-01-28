@@ -1,5 +1,4 @@
-/* Declarations */
-/// An X86_64 register.
+/// X86_64 register.
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 #[repr(usize)]
 pub enum Register {
@@ -12,55 +11,39 @@ pub enum Register {
 impl std::fmt::Display for Register {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}", match self {
-			Register::RAX => "rax".to_string(),
-			Register::RBX => "rbx".to_string(),
-			Register::RCX => "rcx".to_string(),
-			Register::RDX => "rdx".to_string(),
-			Register::RSP => "rsp".to_string(),
-			Register::RBP => "rbp".to_string(),
-			Register::RDI => "rdi".to_string(),
-			Register::RSI => "rsi".to_string(),
-			Register::R8 => "r8".to_string(),
-			Register::R9 => "r9".to_string(),
-			Register::R10 => "r10".to_string(),
-			Register::R11 => "r11".to_string(),
-			Register::R12 => "r12".to_string(),
-			Register::R13 => "r13".to_string(),
-			Register::R14 => "r14".to_string(),
-			Register::R15 => "r15".to_string(),
+			Register::RAX => "rax",
+			Register::RBX => "rbx",
+			Register::RCX => "rcx",
+			Register::RDX => "rdx",
+			Register::RSP => "rsp",
+			Register::RBP => "rbp",
+			Register::RDI => "rdi",
+			Register::RSI => "rsi",
+			Register::R8 => "r8",
+			Register::R9 => "r9",
+			Register::R10 => "r10",
+			Register::R11 => "r11",
+			Register::R12 => "r12",
+			Register::R13 => "r13",
+			Register::R14 => "r14",
+			Register::R15 => "r15",
 		})
 	}
 }
 
-// TODO: tidy/remove
+/// Convert usize to Register.
 impl TryFrom<usize> for Register {
 	type Error = &'static str;
 
 	fn try_from(value: usize) -> Result<Self, Self::Error> {
 		match value {
-			0 => Ok(Self::RAX),
-			1 => Ok(Self::RBX),
-			2 => Ok(Self::RCX),
-			3 => Ok(Self::RSP),
-			4 => Ok(Self::RBP),
-			5 => Ok(Self::RDI),
-			6 => Ok(Self::RSI),
-			7 => Ok(Self::RDX),
-			8 => Ok(Self::R8),
-			9 => Ok(Self::R9),
-			10 => Ok(Self::R10),
-			11 => Ok(Self::R11),
-			12 => Ok(Self::R12),
-			13 => Ok(Self::R13),
-			14 => Ok(Self::R14),
-			15 => Ok(Self::R15),
-			_ => Err("Ran out of registers!")
+			0..=15 => Ok(unsafe { std::mem::transmute(value) }),
+			_ => Err("Ran out of registers!"),
 		}
 	}
 }
 
-/// An X86_64 assembly operand.
-/// Only accepts registers or immediates, no memory or relative values.
+/// X86_64 assembly operand (register or immediate).
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub enum Operand {
 	Register(Register),
@@ -69,15 +52,14 @@ pub enum Operand {
 
 impl std::fmt::Display for Operand {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", match self {
-			Operand::Register(register) => format!("{}", register),
-			Operand::Immediate(value) => format!("{}", value),
-		})
+		match self {
+			Operand::Register(register) => write!(f, "{}", register),
+			Operand::Immediate(value) => write!(f, "{}", value),
+		}
 	}
 }
 
-/// An X86_64 assembly jump (condition.)
-/// Used to combine `CMP` and `Jcc` instructions.
+/// X86_64 assembly jump condition.
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub enum Jump {
 	Zero,
@@ -101,7 +83,7 @@ impl std::fmt::Display for Jump {
 	}
 }
 
-// TODO: tidy/remove
+/// Convert LIRConditionType to Jump.
 impl From<crate::lir::node::LIRConditionType> for Jump {
 	fn from(value: crate::lir::node::LIRConditionType) -> Self {
 		use crate::lir::node::LIRConditionType;
@@ -116,7 +98,7 @@ impl From<crate::lir::node::LIRConditionType> for Jump {
 	}
 }
 
-/// An X86_64 assembly instruction.
+/// X86_64 assembly instruction.
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub enum Instruction {
 	/// Set a register to a value.
