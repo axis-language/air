@@ -35,11 +35,11 @@ impl std::fmt::Display for Register {
 impl TryFrom<usize> for Register {
 	type Error = &'static str;
 
-	#[fehler::throws(Self::Errror)]
+	#[fehler::throws(Self::Error)]
 	fn try_from(value: usize) -> Self {
 		match value {
 			0..=15 => unsafe { std::mem::transmute(value) },
-			_ => throw!("Ran out of registers!"),
+			_ => fehler::throw!("Ran out of registers!"),
 		}
 	}
 }
