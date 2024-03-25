@@ -4,9 +4,12 @@
 
 Cargo.lock
 
-# rust
+# Rust
 **/*.rs.bk
 *.pdb
 
 # JetBrains
 /.idea
+
+# VSCode
+/.vscode

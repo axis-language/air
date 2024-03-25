@@ -1,95 +1,74 @@
-/* Modules */
-pub mod instruction;
+pub mod compile;
+pub mod optimize;
+pub mod output;
 
-/* Imports */
-use instruction::*;
-use crate::arch::*;
-use crate::lir::{
-	Module,
-	node::*,
-};
+use std::collections::HashMap;
+use super::*;
 
-/* Declarations */
-#[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
-pub struct X86_64;
-
-#[fehler::throws(&'static str)]
-fn ir_operand_to_x86_64_operand(operand: &LIROperand, context: &LowerToAssemblyContext) -> Operand {
-	match operand {
-		LIROperand::Variable(id) => Operand::Register(
-			context.get_allocated_register_from_ir_variable(*id)?.try_into()?
-		),
-		LIROperand::Immediate(value) => Operand::Immediate(*value),
-	}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Register {
+	RAX, RBX, RCX, RDX,
+	RSI, RDI, RSP, RBP,
+	R8, R9, R10, R11, R12, R13, R14, R15,
+	RIP,
 }
 
-impl Architecture for X86_64 {
-	type Instruction = Instruction;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Operand {
+	Register(Register),
+	Immediate(usize)
+}
 
-	#[fehler::throws(&'static str)]
-	fn lower_lir_node_to_assembly_instruction(node: &LIRNode, context: &LowerToAssemblyContext) -> Module<Self::Instruction> {
-		match node {
-			LIRNode::Set { dest, a } => vec![
-				Instruction::MOV {
-					dest: context.get_allocated_register_from_ir_variable(*dest)?.try_into()?,
-					a: ir_operand_to_x86_64_operand(a, context)?,
-				},
-			],
-			LIRNode::Call { module_id } => vec![
-				Instruction::CALL {
-					module_id: *module_id,
-				},
-			],
-			LIRNode::Branch { condition, a, b, module_id } => vec![
-				Instruction::CMP {
-					a: ir_operand_to_x86_64_operand(a, context)?,
-					b: ir_operand_to_x86_64_operand(b, context)?,
-				},
-				Instruction::Jcc {
-					kind: (*condition).into(),
-					module_id: *module_id,
-				},
-			],
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum Node {
+	/* Inline */
+	InlineString { string: String },
+	InlineByte { data: u8 },
+
+	/* Control */
+	Call { function: FunctionID },
+
+	Mov { destination: Register, a: Operand },
+	
+	Jmp { target: FunctionID },
+
+	/* Arithmetic */
+	Add { destination: Register, a: Operand },
+	Sub { destination: Register, a: Operand },
+	Mul { destination: Register, a: Operand },
+	Div { destination: Register, a: Operand },
+	
+	/* Logic */
+	And { destination: Register, a: Operand },
+	Or { destination: Register, a: Operand },
+	Xor { destination: Register, a: Operand },
+	Not { destination: Register },
+	Shl { destination: Register, a: Operand },
+	Shr { destination: Register, a: Operand },
+	
+}
+
+pub type Block = Vec<Node>;
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct Program {
+	pub main: Block,
+	pub functions: HashMap<FunctionID, Block>,
+}
+
+impl Program {
+	pub fn new() -> Self {
+		Program {
+			main: vec![],
+			functions: HashMap::new(),
 		}
 	}
 
-	fn lower_assembly_instruction_to_assembly_file_string(instruction: &Self::Instruction, context: &LowerToAssemblyFileContext) -> String {
-		match instruction {
-			Instruction::MOV { dest, a } => format!("mov {}, {}", dest, a),
-			Instruction::CALL { module_id } => format!("call function_{}", module_id),
-			Instruction::JMP { module_id } => format!("jmp function_{}", module_id),
-			Instruction::Jcc { kind, module_id } => format!("{} function_{}", kind, module_id),
-			Instruction::CMP { a, b } => format!("cmp {}, {}", a, b),
-		}
+	pub fn set_main(&mut self, code: Block) {
+		self.main = code;
 	}
 
-	#[fehler::throws(&'static str)]
-	fn lower_assembly_to_file(assembly: &Project<Self::Instruction>, context: &LowerToAssemblyFileContext) -> String {
-		// Allocate 8 bytes for each instruction (should be enough)
-		let mut res = String::with_capacity((assembly.main.len() * 8) + (assembly.functions.iter().map(|f| f.len() * 8).sum::<usize>()));
-
-		res.push_str("section .data\n\n");
-		res.push_str("section .text\n\n");
-		res.push_str("global main\n\n");
-		res.push_str("main:\n");
-
-		for instruction in &assembly.main {
-			res.push_str(&format!("\t{}\n", Self::lower_assembly_instruction_to_assembly_file_string(&instruction, context)));
-		}
-		res.push_str("\tjmp end\n\n");
-
-		for (function_index, function) in assembly.functions.iter().enumerate() {
-			res.push_str(&format!("function_{}:\n", function_index));
-
-			for instruction in function {
-				res.push_str(&format!("\t{}\n", Self::lower_assembly_instruction_to_assembly_file_string(&instruction, context)));
-			}
-
-			res.push_str("\tret\n\n");
-		}
-
-		res.push_str("end:\n");
-		res.push_str("\tret\n");
-		res
+	pub fn set_function(&mut self, name: String, code: Block) {
+		self.functions.insert(name, code);
 	}
 }
